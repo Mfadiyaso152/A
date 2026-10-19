@@ -1,0 +1,8 @@
+{
+  "name": "Marker_detection",
+  "description": "تطبيق متقدم لتتبع مسار الخط عبر كاميرا الجوال مع كشف حقيقي وتنبيهات صوتية وبصرية واهتزازية، وتثبيت PWA بدون اتصال.",
+  "requestFramePermissions": [
+    "camera"
+  ],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
