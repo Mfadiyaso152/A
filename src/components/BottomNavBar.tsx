@@ -1,6 +1,6 @@
 import React from 'react';
 import { ActiveTab } from './Header';
-import { Camera, Settings, BookOpen, FlaskConical, Info } from 'lucide-react';
+import { Camera, Settings, BookOpen } from 'lucide-react';
 
 interface BottomNavBarProps {
   activeTab: ActiveTab;
@@ -19,13 +19,11 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
     { id: 'tracker' as ActiveTab, icon: Camera, labelAr: 'التتبع', labelEn: 'Tracker' },
     { id: 'settings' as ActiveTab, icon: Settings, labelAr: 'الإعدادات', labelEn: 'Settings' },
     { id: 'guide' as ActiveTab, icon: BookOpen, labelAr: 'الدليل', labelEn: 'Guide' },
-    { id: 'lab' as ActiveTab, icon: FlaskConical, labelAr: 'المختبر', labelEn: 'Test Lab' },
-    { id: 'about' as ActiveTab, icon: Info, labelAr: 'عن التطبيق', labelEn: 'About' },
   ];
 
   return (
-    <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#0B1220]/95 backdrop-blur-lg border-t border-[#1E2E48] pb-safe">
-      <div className="grid grid-cols-5 items-center h-16">
+    <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-lg border-t border-slate-200/90 pb-safe shadow-md">
+      <div className="grid grid-cols-3 items-center h-16 max-w-md mx-auto">
         {items.map((item) => {
           const isActive = activeTab === item.id;
           const IconComponent = item.icon;
@@ -37,15 +35,15 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
               aria-label={isAr ? item.labelAr : item.labelEn}
             >
               <div
-                className={`p-1 rounded-xl transition-all ${
-                  isActive ? 'bg-[#26D9C4]/15 text-[#26D9C4]' : 'text-slate-400 hover:text-slate-200'
+                className={`p-1.5 rounded-xl transition-all ${
+                  isActive ? 'bg-[#0D9488]/15 text-[#0D9488]' : 'text-slate-400 hover:text-slate-600'
                 }`}
               >
                 <IconComponent className="w-5 h-5" />
               </div>
               <span
-                className={`text-[10px] mt-0.5 tracking-tight font-medium ${
-                  isActive ? 'text-[#26D9C4]' : 'text-slate-400'
+                className={`text-[11px] mt-0.5 tracking-tight font-medium ${
+                  isActive ? 'text-[#0D9488] font-bold' : 'text-slate-500'
                 }`}
               >
                 {isAr ? item.labelAr : item.labelEn}

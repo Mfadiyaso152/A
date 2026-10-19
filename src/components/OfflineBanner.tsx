@@ -15,7 +15,7 @@ export const OfflineBanner: React.FC<OfflineBannerProps> = ({ language }) => {
   return (
     <div
       role="alert"
-      className="fixed bottom-20 md:bottom-6 start-4 z-50 flex items-center gap-2 rounded-xl bg-amber-500/90 text-slate-950 px-3.5 py-2 text-xs font-semibold shadow-lg backdrop-blur-sm border border-amber-400"
+      className="fixed bottom-20 md:bottom-6 start-4 z-50 flex items-center gap-2 rounded-2xl bg-amber-500 text-slate-950 px-4 py-2.5 text-xs font-bold shadow-lg border border-amber-400"
     >
       <WifiOff className="w-4 h-4 shrink-0" />
       <span>

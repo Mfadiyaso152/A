@@ -5,17 +5,14 @@ import { BottomNavBar } from './components/BottomNavBar';
 import { CameraTracker } from './components/CameraTracker';
 import { SettingsModal } from './components/SettingsModal';
 import { GuideModal } from './components/GuideModal';
-import { TestLabModal } from './components/TestLabModal';
-import { AboutModal } from './components/AboutModal';
 import { OnboardingModal } from './components/OnboardingModal';
 import { OfflineBanner } from './components/OfflineBanner';
 import { audioFeedback } from './services/audio_feedback';
 
-const SETTINGS_STORAGE_KEY = 'marker_detection_settings_v1';
-const ONBOARDING_STORAGE_KEY = 'marker_detection_onboarded_v1';
+const SETTINGS_STORAGE_KEY = 'marker_detection_settings_v2';
+const ONBOARDING_STORAGE_KEY = 'marker_detection_onboarded_v2';
 
 export default function App() {
-  // Load settings with fallback to defaults
   const [settings, setSettings] = useState<SettingsModel>(() => {
     try {
       const stored = localStorage.getItem(SETTINGS_STORAGE_KEY);
@@ -28,7 +25,6 @@ export default function App() {
     return DEFAULT_SETTINGS;
   });
 
-  // Track first-time onboarding
   const [isOnboardingOpen, setIsOnboardingOpen] = useState<boolean>(() => {
     try {
       return localStorage.getItem(ONBOARDING_STORAGE_KEY) !== 'true';
@@ -39,7 +35,6 @@ export default function App() {
 
   const [activeTab, setActiveTab] = useState<ActiveTab>('tracker');
 
-  // Save settings on update
   const handleUpdateSettings = (newSettings: Partial<SettingsModel>) => {
     setSettings((prev) => {
       const updated = { ...prev, ...newSettings };
@@ -70,14 +65,13 @@ export default function App() {
     }
   };
 
-  // Sync document language and dir attribute
   useEffect(() => {
     document.documentElement.lang = settings.language;
     document.documentElement.dir = settings.language === 'ar' ? 'rtl' : 'ltr';
   }, [settings.language]);
 
   return (
-    <div className="min-h-screen bg-[#0B1220] text-[#F4F7FC] flex flex-col font-sans selection:bg-[#26D9C4]/20 selection:text-[#26D9C4]">
+    <div className="min-h-screen bg-[#F8FAFC] text-[#0F172A] flex flex-col font-sans selection:bg-[#0D9488]/20 selection:text-[#0D9488] overflow-x-hidden">
       {/* Top Bar Header */}
       <Header
         activeTab={activeTab}
@@ -99,7 +93,7 @@ export default function App() {
       />
 
       {/* Main Content Area */}
-      <main className="flex-1 max-w-6xl w-full mx-auto p-3 sm:p-6">
+      <main className="flex-1 max-w-4xl w-full mx-auto p-3 sm:p-6">
         {activeTab === 'tracker' && (
           <CameraTracker
             settings={settings}
@@ -119,15 +113,9 @@ export default function App() {
         )}
 
         {activeTab === 'guide' && <GuideModal language={settings.language} />}
-
-        {activeTab === 'lab' && (
-          <TestLabModal settings={settings} language={settings.language} />
-        )}
-
-        {activeTab === 'about' && <AboutModal language={settings.language} />}
       </main>
 
-      {/* Mobile Bottom Navigation Bar */}
+      {/* Mobile Bottom Navigation Bar (3 Clean Tabs) */}
       <BottomNavBar
         activeTab={activeTab}
         onTabChange={(tab) => setActiveTab(tab)}

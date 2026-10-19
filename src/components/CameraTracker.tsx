@@ -3,7 +3,6 @@ import {
   SettingsModel,
   LinePosition,
   DetectionState,
-  DEFAULT_SETTINGS,
 } from '../types';
 import { LineDetector } from '../services/line_detector';
 import { audioFeedback } from '../services/audio_feedback';
@@ -34,7 +33,6 @@ interface CameraTrackerProps {
 export const CameraTracker: React.FC<CameraTrackerProps> = ({
   settings,
   onUpdateSettings,
-  onOpenSettings,
   language,
 }) => {
   const isAr = language === 'ar';
@@ -166,7 +164,6 @@ export const CameraTracker: React.FC<CameraTrackerProps> = ({
     lastProcessTimeRef.current = now;
 
     try {
-      // 1. Prepare processing canvas matching configured resolution
       let procCanvas = processingCanvasRef.current;
       if (!procCanvas) {
         procCanvas = document.createElement('canvas');
@@ -184,17 +181,13 @@ export const CameraTracker: React.FC<CameraTrackerProps> = ({
         pCtx.drawImage(video, 0, 0, targetW, targetH);
         const imgData = pCtx.getImageData(0, 0, targetW, targetH);
 
-        // 2. Run real computer vision line detector
         const debugCanvas = settings.showDebugView ? debugCanvasRef.current : null;
         const result = detectorRef.current.detectLine(imgData, settings, debugCanvas);
 
         setLinePosition(result.position);
         setDetectionState(result.state);
 
-        // 3. Audio & Haptic Feedback Dispatcher
         audioFeedback.handleDetectionState(result.state, settings);
-
-        // 4. Render Live Video Overlay (ROI bounding box and detected line points)
         renderOverlay(result.position, result.state, targetW, targetH);
       }
     } catch {
@@ -205,7 +198,6 @@ export const CameraTracker: React.FC<CameraTrackerProps> = ({
     }
   }, [isTracking, isPaused, settings]);
 
-  // Overlay renderer matching video aspect ratio and scale
   const renderOverlay = (
     pos: LinePosition,
     state: DetectionState,
@@ -229,24 +221,21 @@ export const CameraTracker: React.FC<CameraTrackerProps> = ({
     const scaleX = canvas.width / sourceW;
     const scaleY = canvas.height / sourceH;
 
-    // Draw ROI Box in the lower portion
     const roiHeight = Math.floor(canvas.height * (settings.roiBottomPercent / 100));
     const roiTop = canvas.height - roiHeight;
 
     ctx.save();
-    // ROI boundary box
-    ctx.strokeStyle = state === 'locked' ? '#22C55E' : state === 'lost' ? '#EF4444' : '#26D9C4';
-    ctx.lineWidth = 2;
+    ctx.strokeStyle = state === 'locked' ? '#16A34A' : state === 'lost' ? '#DC2626' : '#0D9488';
+    ctx.lineWidth = 2.5;
     ctx.setLineDash([6, 4]);
     ctx.strokeRect(4, roiTop, canvas.width - 8, roiHeight - 4);
 
-    // Deadzone guide corridor
     const deadW = settings.deadZone * canvas.width;
     const deadLeft = (canvas.width - deadW) / 2;
-    ctx.fillStyle = state === 'locked' ? 'rgba(34, 197, 94, 0.08)' : 'rgba(38, 217, 196, 0.05)';
+    ctx.fillStyle = state === 'locked' ? 'rgba(22, 163, 74, 0.12)' : 'rgba(13, 148, 136, 0.08)';
     ctx.fillRect(deadLeft, roiTop, deadW, roiHeight);
 
-    ctx.strokeStyle = state === 'locked' ? 'rgba(34, 197, 94, 0.4)' : 'rgba(38, 217, 196, 0.25)';
+    ctx.strokeStyle = state === 'locked' ? 'rgba(22, 163, 74, 0.6)' : 'rgba(13, 148, 136, 0.4)';
     ctx.setLineDash([2, 2]);
     ctx.beginPath();
     ctx.moveTo(deadLeft, roiTop);
@@ -255,8 +244,7 @@ export const CameraTracker: React.FC<CameraTrackerProps> = ({
     ctx.lineTo(deadLeft + deadW, canvas.height);
     ctx.stroke();
 
-    // Center Reference Line
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
     ctx.setLineDash([4, 4]);
     ctx.beginPath();
     ctx.moveTo(canvas.width / 2, roiTop);
@@ -264,11 +252,9 @@ export const CameraTracker: React.FC<CameraTrackerProps> = ({
     ctx.stroke();
     ctx.setLineDash([]);
 
-    // Draw detected line trajectory and centroids if enabled
     if (settings.showLineHighlight && pos.linePoints.length > 0 && state !== 'lost') {
-      // Connect points with smooth stroke
-      ctx.strokeStyle = state === 'locked' ? '#22C55E' : '#26D9C4';
-      ctx.lineWidth = 4;
+      ctx.strokeStyle = state === 'locked' ? '#16A34A' : '#14B8A6';
+      ctx.lineWidth = 4.5;
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
 
@@ -282,14 +268,13 @@ export const CameraTracker: React.FC<CameraTrackerProps> = ({
       }
       ctx.stroke();
 
-      // Draw point markers
       for (const pt of pos.linePoints) {
         const screenX = pt.x * scaleX;
         const screenY = pt.y * scaleY;
 
         ctx.fillStyle = '#FFFFFF';
         ctx.beginPath();
-        ctx.arc(screenX, screenY, 4, 0, Math.PI * 2);
+        ctx.arc(screenX, screenY, 4.5, 0, Math.PI * 2);
         ctx.fill();
       }
     }
@@ -297,10 +282,8 @@ export const CameraTracker: React.FC<CameraTrackerProps> = ({
     ctx.restore();
   };
 
-  // Start / Stop Tracking toggle
   const handleToggleTracking = async () => {
     if (!isTracking) {
-      // Start
       audioFeedback.initAudioContext();
       detectorRef.current.reset();
       await startCamera();
@@ -309,7 +292,6 @@ export const CameraTracker: React.FC<CameraTrackerProps> = ({
       setDetectionState('searching');
       wakeLockManager.requestLock();
     } else {
-      // Stop
       setIsTracking(false);
       setIsPaused(false);
       setDetectionState('idle');
@@ -317,7 +299,6 @@ export const CameraTracker: React.FC<CameraTrackerProps> = ({
       wakeLockManager.releaseLock();
       stopCameraStream();
 
-      // Clear overlay
       if (overlayCanvasRef.current) {
         const ctx = overlayCanvasRef.current.getContext('2d');
         if (ctx) ctx.clearRect(0, 0, overlayCanvasRef.current.width, overlayCanvasRef.current.height);
@@ -325,7 +306,6 @@ export const CameraTracker: React.FC<CameraTrackerProps> = ({
     }
   };
 
-  // Pause / Resume toggle
   const handleTogglePause = () => {
     if (!isTracking) return;
     if (isPaused) {
@@ -337,7 +317,6 @@ export const CameraTracker: React.FC<CameraTrackerProps> = ({
     }
   };
 
-  // Animation frame loop kickoff
   useEffect(() => {
     animFrameRef.current = requestAnimationFrame(runDetectionFrame);
     return () => {
@@ -345,7 +324,6 @@ export const CameraTracker: React.FC<CameraTrackerProps> = ({
     };
   }, [runDetectionFrame]);
 
-  // Clean unmount
   useEffect(() => {
     return () => {
       stopCameraStream();
@@ -354,7 +332,6 @@ export const CameraTracker: React.FC<CameraTrackerProps> = ({
     };
   }, [stopCameraStream]);
 
-  // Sample color from camera frame when user touches video
   const handleSampleColorAtCoords = (e: React.MouseEvent<HTMLDivElement> | React.TouchEvent<HTMLDivElement>) => {
     if (!isPickingColor) return;
 
@@ -380,7 +357,6 @@ export const CameraTracker: React.FC<CameraTrackerProps> = ({
     const pCtx = proc.getContext('2d');
     if (!pCtx) return;
 
-    // Scale to processing dimensions
     const scaleX = proc.width / rect.width;
     const scaleY = proc.height / rect.height;
     const px = Math.floor(x * scaleX);
@@ -407,20 +383,19 @@ export const CameraTracker: React.FC<CameraTrackerProps> = ({
   };
 
   return (
-    <div className="w-full max-w-4xl mx-auto space-y-3.5 pb-20 md:pb-6">
-      {/* Video Viewport Container */}
+    <div className="w-full max-w-3xl mx-auto space-y-4 pb-20 md:pb-6">
+      {/* Video Viewport Container with clean modern borders */}
       <div
-        className={`relative w-full aspect-[4/3] sm:aspect-[16/10] bg-[#070C15] rounded-2xl overflow-hidden border ${
+        className={`relative w-full aspect-[4/3] sm:aspect-[16/10] bg-slate-950 rounded-3xl overflow-hidden border-2 ${
           detectionState === 'locked'
-            ? 'border-emerald-500/80 shadow-lg shadow-emerald-500/10'
+            ? 'border-emerald-500 shadow-md shadow-emerald-500/15'
             : detectionState === 'lost'
-            ? 'border-rose-500/80'
-            : 'border-[#1E2E48]'
-        } transition-colors`}
+            ? 'border-rose-500 shadow-md shadow-rose-500/15'
+            : 'border-slate-300'
+        } transition-colors shadow-sm`}
         onClick={handleSampleColorAtCoords}
         onTouchStart={handleSampleColorAtCoords}
       >
-        {/* Real Live HTML Video Element */}
         <video
           ref={videoRef}
           playsInline
@@ -429,27 +404,24 @@ export const CameraTracker: React.FC<CameraTrackerProps> = ({
           className="absolute inset-0 w-full h-full object-cover"
         />
 
-        {/* Live Drawing Overlay Canvas */}
         <canvas
           ref={overlayCanvasRef}
           className="absolute inset-0 w-full h-full pointer-events-none z-10"
         />
 
-        {/* Debug Canvas (visible when showDebugView is true) */}
         {settings.showDebugView && (
-          <div className="absolute top-3 end-3 z-20 w-32 sm:w-44 aspect-[4/3] bg-black/90 rounded-lg border border-slate-700 overflow-hidden shadow-xl">
+          <div className="absolute top-3 end-3 z-20 w-32 sm:w-44 aspect-[4/3] bg-black/95 rounded-xl border border-slate-700 overflow-hidden shadow-xl">
             <canvas ref={debugCanvasRef} className="w-full h-full object-contain" />
-            <div className="absolute bottom-0 inset-x-0 bg-black/80 text-[9px] text-center text-slate-300 py-0.5 font-mono">
+            <div className="absolute bottom-0 inset-x-0 bg-black/90 text-[10px] text-center text-slate-300 py-0.5 font-mono">
               DEBUG MASK
             </div>
           </div>
         )}
 
-        {/* Color Sampling Mode Crosshair Banner */}
         {isPickingColor && (
-          <div className="absolute inset-0 z-30 bg-black/40 flex flex-col items-center justify-center p-4 text-center cursor-crosshair">
+          <div className="absolute inset-0 z-30 bg-black/50 backdrop-blur-xs flex flex-col items-center justify-center p-4 text-center cursor-crosshair">
             <Crosshair className="w-12 h-12 text-[#26D9C4] animate-pulse mb-2" />
-            <div className="px-3 py-1.5 rounded-lg bg-[#0B1220]/90 border border-[#26D9C4] text-xs font-semibold text-[#F4F7FC]">
+            <div className="px-3.5 py-2 rounded-xl bg-white text-slate-900 border border-slate-200 text-xs font-bold shadow-lg">
               {isAr ? 'المس الخط على الشاشة لمعايرة لونه' : 'Tap on the ground line to calibrate color'}
             </div>
             <button
@@ -457,30 +429,29 @@ export const CameraTracker: React.FC<CameraTrackerProps> = ({
                 e.stopPropagation();
                 setIsPickingColor(false);
               }}
-              className="mt-3 px-3 py-1 rounded-lg bg-slate-800 text-slate-200 text-xs hover:bg-slate-700"
+              className="mt-3 px-3.5 py-1.5 rounded-xl bg-slate-800 text-slate-200 text-xs hover:bg-slate-700"
             >
               {isAr ? 'إلغاء' : 'Cancel'}
             </button>
           </div>
         )}
 
-        {/* Idle / Camera Off State Placeholder */}
         {!isTracking && !cameraError && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center p-6 bg-[#0B1220]/80 backdrop-blur-xs text-center z-20">
-            <div className="w-16 h-16 rounded-2xl bg-[#131E30] border border-[#1E2E48] flex items-center justify-center mb-3 text-[#26D9C4] shadow-lg">
+          <div className="absolute inset-0 flex flex-col items-center justify-center p-6 bg-slate-900/85 backdrop-blur-xs text-center z-20">
+            <div className="w-16 h-16 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center mb-3 text-[#26D9C4] shadow-lg">
               <Crosshair className="w-8 h-8" />
             </div>
-            <h3 className="text-base sm:text-lg font-bold text-[#F4F7FC] mb-1">
+            <h3 className="text-base sm:text-lg font-bold text-white mb-1">
               Marker_detection
             </h3>
-            <p className="text-xs text-slate-400 max-w-sm mb-4">
+            <p className="text-xs text-slate-300 max-w-sm mb-5 leading-relaxed">
               {isAr
-                ? 'وجّه الكاميرا الخلفية نحو مسار الخط على الأرض واضغط على زر بدء التتبع أدناه.'
-                : 'Aim the camera at the floor line and press Start Tracking below.'}
+                ? 'وجّه الكاميرا الخلفية نحو مسار الخط على الأرض بزاوية 30° إلى 45°، ثم اضغط على زر بدء التتبع أدناه.'
+                : 'Aim the camera at the floor line at 30° to 45°, then press Start Tracking below.'}
             </p>
             <button
               onClick={handleToggleTracking}
-              className="px-6 py-3 rounded-xl bg-[#26D9C4] text-[#0B1220] font-bold text-sm shadow-md hover:bg-[#20b8a6] transition-transform active:scale-95 flex items-center gap-2 min-h-[48px]"
+              className="px-7 py-3 rounded-2xl bg-[#0D9488] text-white font-bold text-sm shadow-md hover:bg-[#0f766e] transition-transform active:scale-95 flex items-center gap-2 min-h-[48px]"
             >
               <Play className="w-4.5 h-4.5 fill-current" />
               <span>{isAr ? 'بدء التتبع الآن' : 'Start Tracking'}</span>
@@ -488,17 +459,16 @@ export const CameraTracker: React.FC<CameraTrackerProps> = ({
           </div>
         )}
 
-        {/* Camera Error Display */}
         {cameraError && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center p-6 bg-red-950/80 backdrop-blur-xs text-center z-20">
+          <div className="absolute inset-0 flex flex-col items-center justify-center p-6 bg-red-950/90 backdrop-blur-xs text-center z-20">
             <VideoOff className="w-12 h-12 text-rose-400 mb-2" />
             <h3 className="text-sm font-bold text-rose-200 mb-1">
               {isAr ? 'تعذر تشغيل الكاميرا' : 'Camera Inaccessible'}
             </h3>
-            <p className="text-xs text-rose-300 max-w-xs mb-3 font-mono">{cameraError}</p>
+            <p className="text-xs text-rose-300 max-w-xs mb-4 font-mono">{cameraError}</p>
             <button
               onClick={startCamera}
-              className="px-4 py-2 rounded-xl bg-slate-900 border border-slate-700 text-xs font-medium text-white flex items-center gap-1.5"
+              className="px-4 py-2 rounded-xl bg-white text-slate-900 border border-slate-200 text-xs font-semibold flex items-center gap-1.5 shadow-sm"
             >
               <RefreshCw className="w-3.5 h-3.5" />
               <span>{isAr ? 'إعادة المحاولة' : 'Retry'}</span>
@@ -506,19 +476,17 @@ export const CameraTracker: React.FC<CameraTrackerProps> = ({
           </div>
         )}
 
-        {/* Paused state overlay */}
         {isTracking && isPaused && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/60 backdrop-blur-xs z-20">
-            <div className="px-4 py-2 rounded-xl bg-[#131E30] border border-amber-500/50 text-amber-300 text-xs font-semibold flex items-center gap-2">
-              <Pause className="w-4 h-4" />
+            <div className="px-4 py-2.5 rounded-2xl bg-white border border-amber-400 text-amber-900 text-xs font-bold flex items-center gap-2 shadow-lg">
+              <Pause className="w-4 h-4 text-amber-600" />
               <span>{isAr ? 'التتبع متوقف مؤقتًا' : 'Tracking Paused'}</span>
             </div>
           </div>
         )}
 
-        {/* Color sample success toast */}
         {colorSampleSuccess && (
-          <div className="absolute top-3 start-3 z-30 px-3 py-1.5 rounded-lg bg-emerald-950/90 border border-emerald-500 text-emerald-300 text-xs font-medium shadow-lg">
+          <div className="absolute top-3 start-3 z-30 px-3.5 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold shadow-lg">
             {colorSampleSuccess}
           </div>
         )}
@@ -548,13 +516,12 @@ export const CameraTracker: React.FC<CameraTrackerProps> = ({
 
       {/* Primary Control Buttons */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-1">
-        {/* Main Start / Stop Button */}
         <button
           onClick={handleToggleTracking}
-          className={`col-span-2 sm:col-span-1 py-3 px-4 rounded-xl font-bold text-sm shadow-md flex items-center justify-center gap-2 min-h-[48px] transition-all active:scale-[0.98] ${
+          className={`col-span-2 sm:col-span-1 py-3 px-4 rounded-2xl font-bold text-sm shadow-sm flex items-center justify-center gap-2 min-h-[48px] transition-all active:scale-[0.98] ${
             isTracking
               ? 'bg-rose-600 hover:bg-rose-700 text-white shadow-rose-600/20'
-              : 'bg-[#26D9C4] hover:bg-[#20b8a6] text-[#0B1220] shadow-[#26D9C4]/20'
+              : 'bg-[#0D9488] hover:bg-[#0f766e] text-white shadow-[#0D9488]/20'
           }`}
           aria-label={isTracking ? 'Stop tracking' : 'Start tracking'}
         >
@@ -571,16 +538,15 @@ export const CameraTracker: React.FC<CameraTrackerProps> = ({
           )}
         </button>
 
-        {/* Pause / Resume Button */}
         <button
           onClick={handleTogglePause}
           disabled={!isTracking}
-          className={`py-3 px-3 rounded-xl border font-semibold text-xs flex items-center justify-center gap-1.5 min-h-[48px] transition-colors ${
+          className={`py-3 px-3 rounded-2xl border font-bold text-xs flex items-center justify-center gap-1.5 min-h-[48px] transition-colors ${
             !isTracking
-              ? 'opacity-40 cursor-not-allowed bg-[#131E30]/50 border-slate-800 text-slate-500'
+              ? 'opacity-40 cursor-not-allowed bg-slate-100 border-slate-200 text-slate-400'
               : isPaused
-              ? 'bg-[#131E30] border-[#26D9C4] text-[#26D9C4] hover:bg-[#1A2840]'
-              : 'bg-[#131E30] border-slate-700 text-slate-200 hover:bg-[#1A2840]'
+              ? 'bg-amber-50 border-amber-400 text-amber-800'
+              : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
           }`}
         >
           <Pause className="w-4 h-4" />
@@ -589,16 +555,15 @@ export const CameraTracker: React.FC<CameraTrackerProps> = ({
           </span>
         </button>
 
-        {/* Color Pipette Sampler */}
         <button
           onClick={() => setIsPickingColor(!isPickingColor)}
           disabled={!isTracking}
-          className={`py-3 px-3 rounded-xl border font-semibold text-xs flex items-center justify-center gap-1.5 min-h-[48px] transition-colors ${
+          className={`py-3 px-3 rounded-2xl border font-bold text-xs flex items-center justify-center gap-1.5 min-h-[48px] transition-colors ${
             !isTracking
-              ? 'opacity-40 cursor-not-allowed bg-[#131E30]/50 border-slate-800 text-slate-500'
+              ? 'opacity-40 cursor-not-allowed bg-slate-100 border-slate-200 text-slate-400'
               : isPickingColor
-              ? 'bg-[#26D9C4] text-[#0B1220] border-[#26D9C4]'
-              : 'bg-[#131E30] border-slate-700 text-slate-200 hover:bg-[#1A2840]'
+              ? 'bg-[#0D9488] text-white border-[#0D9488]'
+              : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
           }`}
           title={isAr ? 'معايرة لون الخط باللمس' : 'Sample line color by touch'}
         >
@@ -606,15 +571,14 @@ export const CameraTracker: React.FC<CameraTrackerProps> = ({
           <span>{isAr ? 'معايرة اللون' : 'Pick Color'}</span>
         </button>
 
-        {/* Debug View Toggle */}
         <button
           onClick={() =>
             onUpdateSettings({ showDebugView: !settings.showDebugView })
           }
-          className={`py-3 px-3 rounded-xl border font-semibold text-xs flex items-center justify-center gap-1.5 min-h-[48px] transition-colors ${
+          className={`py-3 px-3 rounded-2xl border font-bold text-xs flex items-center justify-center gap-1.5 min-h-[48px] transition-colors ${
             settings.showDebugView
-              ? 'bg-[#1A2840] border-[#6588FF] text-[#6588FF]'
-              : 'bg-[#131E30] border-slate-700 text-slate-300 hover:bg-[#1A2840]'
+              ? 'bg-blue-50 border-blue-400 text-blue-700'
+              : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
           }`}
         >
           {settings.showDebugView ? (
